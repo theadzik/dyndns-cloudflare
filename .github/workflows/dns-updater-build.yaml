@@ -1,13 +1,13 @@
-name: dyndns-noip-build
+name: dyndns-cloudflare-build
 on:
   push:
     tags:
       - "*"
   schedule:
-    - cron: "51 10 * * 6"
+    - cron: "5 9 * * 6"
   workflow_dispatch:
 jobs:
-  dyndns-noip-build:
+  dyndns-cloudflare-build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -45,4 +45,4 @@ jobs:
           build-args: |
             APP_VERSION=${{steps.vars.outputs.tag }}
           push: true
-          tags: ${{ vars.DOCKERHUB_USERNAME }}/dyndns-noip:${{steps.vars.outputs.tag }},${{ vars.DOCKERHUB_USERNAME }}/dyndns-noip:latest
+          tags: ${{ vars.DOCKERHUB_USERNAME }}/dyndns-cloudflare:${{steps.vars.outputs.tag }},${{ vars.DOCKERHUB_USERNAME }}/dyndns-cloudflare:latest
