@@ -1,7 +1,7 @@
 version: "1"
 services:
-  dyndns-noip:
-    image: dyndns-noip
+  dyndns-cloudflare:
+    image: theadzik/dyndns-cloudflare:latest
     volumes:
       - history:/history
     environment:
