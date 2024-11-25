@@ -1,26 +1,26 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: dyndns-noip
+  name: dyndns-cloudflare
   labels:
-    app: dyndns-noip
+    app: dyndns-cloudflare
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: dyndns-noip
+      app: dyndns-cloudflare
   template:
     metadata:
       labels:
-        app: dyndns-noip
+        app: dyndns-cloudflare
     spec:
       containers:
         - name: updater
-          image: theadzik/dyndns-noip:latest
+          image: theadzik/dyndns-cloudflare:latest
           imagePullPolicy: Always
           envFrom:
             - secretRef:
-                name: dyndns-noip-secret
+                name: dyndns-cloudflare-secret
           volumeMounts:
             - mountPath: /history
               name: history
