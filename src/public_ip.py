@@ -1,4 +1,4 @@
-import logging
+from custom_logger import get_logger
 import socket
 import time
 
@@ -6,6 +6,8 @@ import requests
 
 MAX_BACKOFF_TIME = 300
 log_path = "/history/public_ip_history"
+
+logger = get_logger(__name__)
 
 
 def get_public_ip() -> str:
@@ -16,30 +18,30 @@ def get_public_ip() -> str:
         "http://ip1.dynupdate.no-ip.com",
     ]
     for idx, ip_url in enumerate(remote_ip_detection_hosts):
-        logging.debug(f"Requesting IP from {ip_url}")
+        logger.debug(f"Requesting IP from {ip_url}")
         try:
             public_ip = requests.request("GET", ip_url)
             public_ip.raise_for_status()
-            logging.debug(f"Current Public IP: {public_ip.text}")
+            logger.debug(f"Current Public IP: {public_ip.text}")
             return public_ip.text
         except requests.HTTPError:
-            logging.warning(
+            logger.warning(
                 f"Failed do get IP from {ip_url}.\n"
                 f"Status code: {public_ip.status_code}\n"
                 f"Response: {public_ip.text}"
             )
         except requests.exceptions.ConnectionError:
-            logging.warning(
+            logger.warning(
                 f"Failed do get IP from {ip_url}. No internet connection?"
             )
             if idx < len(remote_ip_detection_hosts) - 1:
                 sleep_time = min(MAX_BACKOFF_TIME, 10 ** (idx + 1))  # 10, 100, 300, 300...
-                logging.debug(
+                logger.debug(
                     f"Waiting for {sleep_time} seconds."
                 )
                 time.sleep(sleep_time)
         except Exception as e:
-            logging.error(
+            logger.error(
                 f"Failed do get IP from {ip_url}.\n"
                 f"{e}"
             )
@@ -50,21 +52,21 @@ def get_public_ip() -> str:
 def save_public_ip(public_ip: str) -> None:
     with open(f"{log_path}", "a") as ip_log:
         ip_log.write(public_ip + "\n")
-    logging.info(f"Saved {public_ip} IP to the history file")
+    logger.info(f"Saved {public_ip} IP to the history file")
 
 
 def get_previous_public_ip() -> str:
     try:
         with open(log_path, "r") as ip_log:
             previous_ip = list(ip_log)[-1].strip()
-            logging.debug(f"Previous IP: {previous_ip}")
+            logger.debug(f"Previous IP: {previous_ip}")
             return previous_ip
     except FileNotFoundError:
-        logging.warning("No previous IP found")
+        logger.warning("No previous IP found")
         return ""
 
 
 def resolve_dns(hostname: str) -> str:
     resolved_ip = socket.gethostbyname(hostname)
-    logging.debug(f"{hostname} resolved to {resolved_ip}")
+    logger.debug(f"{hostname} resolved to {resolved_ip}")
     return resolved_ip
