@@ -3,40 +3,45 @@ import os
 import platform
 import re
 import signal
-from base64 import b64encode
 
 import requests
 
 
 class HandlerDNS:
-    def __init__(self, public_ip: str):
-        self.username = os.environ["NOIP_USERNAME"]
-        self.password = os.environ["NOIP_PASSWORD"]
-        self.hostname = os.environ["HOSTNAME"]
-        self.public_ip = public_ip
-        self.update_url = (
-            "https://dynupdate.no-ip.com/nic/update"
-            f"?hostname={self.hostname}"
-            f"&myip={self.public_ip}"
-        )
+    BASE_URL = "https://api.cloudflare.com/client/v4"
+    APP_VERSION = os.environ['APP_VERSION']
+    HOSTNAME = os.environ["HOSTNAME"]
+    API_TOKEN = os.environ["API_TOKEN"]
+
+    def __init__(self):
+        pass
 
     def get_headers(self) -> dict:
-        # encode -> encode -> decode to get string -> bytes -> base64 bytes -> base64 string
-        basic_auth = b64encode(f"{self.username}:{self.password}".encode()).decode()
         headers = {
-            "Authorization": f"Basic {basic_auth}",
             "User-Agent": f"theadzik/dyndns-cloudflare"
                           f"{platform.system()}{platform.release()}"
-                          f"-{os.environ['APP_VERSION']}"
-                          f" adam@zmuda.pro"
+                          f"-{self.APP_VERSION}"
+                          f" adam@zmuda.pro",
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {self.API_TOKEN}"
         }
         return headers
 
-    def update_dns_entry(self) -> bool:
-        update = requests.request(
-            method="GET",
-            url=self.update_url,
-            headers=self.get_headers()
+    def update_dns_entry(self, zone_id: str, dns_record_id: str, ip_address: str) -> bool:
+        update_url = f"{self.BASE_URL}/zones/{zone_id}/dns_records/{dns_record_id}"
+
+        data = {
+            "name": f"{self.HOSTNAME}",
+            "proxied": True,
+            "ttl": 60,
+            "content": f"{ip_address}",
+            "type": "A"
+        }
+
+        update = requests.put(
+            url=update_url,
+            data=data,
+            headers=self.get_headers(),
         )
 
         result = self.handle_response(update)
