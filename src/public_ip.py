@@ -1,8 +1,9 @@
-from custom_logger import get_logger
 import socket
 import time
 
 import requests
+
+from custom_logger import get_logger
 
 MAX_BACKOFF_TIME = 300
 log_path = "/history/public_ip_history"

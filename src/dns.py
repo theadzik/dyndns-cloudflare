@@ -3,9 +3,7 @@ import os
 import platform
 import re
 import signal
-import smtplib
 from base64 import b64encode
-from email.message import EmailMessage
 
 import requests
 
@@ -27,7 +25,7 @@ class HandlerDNS:
         basic_auth = b64encode(f"{self.username}:{self.password}".encode()).decode()
         headers = {
             "Authorization": f"Basic {basic_auth}",
-            "User-Agent": f"theadzik/dyndns-noip"
+            "User-Agent": f"theadzik/dyndns-cloudflare"
                           f"{platform.system()}{platform.release()}"
                           f"-{os.environ['APP_VERSION']}"
                           f" adam@zmuda.pro"
@@ -44,7 +42,8 @@ class HandlerDNS:
         result = self.handle_response(update)
         return result
 
-    def handle_response(self, response: requests.Response) -> bool:
+    @staticmethod
+    def handle_response(response: requests.Response) -> bool:
         # https://www.noip.com/integrate/response
         if re.match(r"good.*", response.text):
             logging.info(f"Updated DNS. [{response.status_code}] {response.text}")

@@ -1,7 +1,8 @@
-from custom_logger import get_logger
 import os
 import smtplib
 from email.message import EmailMessage
+
+from custom_logger import get_logger
 
 logger = get_logger(__name__)
 

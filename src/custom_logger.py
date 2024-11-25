@@ -2,6 +2,7 @@ import logging
 import os
 import sys
 
+# Set global logging level to WARNING to hide logs from chatty libraries
 logging.basicConfig(
     encoding='utf-8',
     level=logging.WARNING,
