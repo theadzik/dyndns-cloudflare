@@ -22,7 +22,7 @@ if __name__ == '__main__':
     while not killer.kill_now:
         current_ip = public_ip.get_public_ip()
         previous_ip = public_ip.get_previous_public_ip()
-        target_ip = dns_handler.get_record_ip()
+        target_ip = dns_handler.get_target_ip()
 
         if current_ip == previous_ip == target_ip:
             logger.debug("Nothing to update")
