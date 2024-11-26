@@ -12,22 +12,23 @@ logger = get_logger(__name__)
 
 if __name__ == '__main__':
     load_dotenv()
+    dns_handler = HandlerDNS()
+    killer = GracefulKiller()
+
     logger.info("Starting listening to Public IP changes")
     if check_only_mode := "CHECK_ONLY_MODE" in os.environ:
         logger.info("CHECK_ONLY_MODE is enabled")
-    dns_handler = HandlerDNS()
-    killer = GracefulKiller()
+
     while not killer.kill_now:
         current_ip = public_ip.get_public_ip()
         previous_ip = public_ip.get_previous_public_ip()
-        resolved_ip = public_ip.resolve_dns(os.environ["HOSTNAME"])
+        target_ip = dns_handler.get_record_ip()
 
-        if current_ip == previous_ip == resolved_ip:
+        if current_ip == previous_ip == target_ip:
             logger.debug("Nothing to update")
             time.sleep(300)
             continue
-        # TODO: Resolved IP != Current IP because of proxy
-        elif current_ip == resolved_ip != previous_ip:
+        elif current_ip == target_ip != previous_ip:
             logger.warning(
                 "DNS resolves correctly but doesn't match saved Public IP."
             )
@@ -36,7 +37,7 @@ if __name__ == '__main__':
             continue
 
         if not check_only_mode:
-            update_success = dns_handler.update_dns_entry(current_ip)
+            update_success = dns_handler.update_record(current_ip)
         else:
             logger.info("CHECK_ONLY_MODE: Skipping update")
             update_success = True

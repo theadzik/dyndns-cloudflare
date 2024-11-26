@@ -17,7 +17,10 @@ class HandlerDNS:
         self.API_TOKEN = os.environ["API_TOKEN"]
 
         self.zone_id = self.get_zone_id()
-        self.dns_record_id = self.get_dns_record_id()
+        self.dns_record_id = self.get_record_id()
+
+        self.dns_record = self.get_record()
+        self.target_ip = self.get_record_ip()
 
     def get_headers(self) -> dict:
         headers = {
@@ -36,13 +39,18 @@ class HandlerDNS:
         zone_id = [zone["id"] for zone in response.json()["result"] if zone["name"] == self.HOSTNAME][0]
         return zone_id
 
-    def get_dns_record_id(self) -> str:
+    def get_record(self) -> dict:
         url = f"{self.BASE_URL}/zones/{self.zone_id}/dns_records"
         response = requests.get(url, headers=self.get_headers())
-        record_id = [record["id"] for record in response.json()["result"] if record["name"] == self.HOSTNAME][0]
-        return record_id
+        return [record for record in response.json()["result"] if record["name"] == self.HOSTNAME][0]
 
-    def update_dns_entry(self, ip_address: str) -> bool:
+    def get_record_id(self) -> str:
+        return self.dns_record["id"]
+
+    def get_record_ip(self) -> str:
+        return self.dns_record["content"]
+
+    def update_record(self, ip_address: str) -> bool:
         update_url = f"{self.BASE_URL}/zones/{self.zone_id}/dns_records/{self.dns_record_id}"
 
         data = {
@@ -57,17 +65,21 @@ class HandlerDNS:
             headers=self.get_headers(),
         )
 
+        self.dns_record = response.json()["result"]
+
         result = self.handle_response(response)
         return result
 
     @staticmethod
     def handle_response(response: requests.Response) -> bool:
+        response_body = response.json()
         try:
             response.raise_for_status()
             logger.info("Updated DNS record.")
+            if response_body["messages"]:
+                logger.info(f"  Messages: {response_body['messages']}")
             return True
         except requests.HTTPError as e:
-            response_body = response.json()
             logger.error(
                 "Failed to update DNS record:\n"
                 f"  Status code: {response.status_code}\n"
@@ -75,4 +87,4 @@ class HandlerDNS:
                 f"  Messages: {response_body['messages']}"
             )
             logger.exception(e)
-            raise e
+            return False
