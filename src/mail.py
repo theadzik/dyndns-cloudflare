@@ -7,7 +7,7 @@ from custom_logger import get_logger
 logger = get_logger(__name__)
 
 
-class EmailClient:
+class MailClient:
     def __init__(self):
         self.smtp_username = os.getenv("SMTP_USERNAME", "")
         self.smtp_password = os.getenv("SMTP_PASSWORD", "")
@@ -24,18 +24,19 @@ class EmailClient:
         ])
 
     @staticmethod
-    def generate_email_body(detected_ip: str, status_code: int, api_response_body: str) -> str:
+    def generate_mail_body(detected_ip: str) -> str:
         body = (
-            f"Your new Public IP address is: {detected_ip}.\n"
-            f"Failed to update your DNS entries.\n"
-            f"A response from the Cloudflare API: [{status_code}] {api_response_body}"
+            f"Your IP address has changed but we failed to update your DNS records.\n\n"
+            f"Your new Public IP address is: {detected_ip}."
         )
 
         return body
 
-    def send_error_email(self, body: str):
+    def send_error_mail(self, detected_ip: str):
+        mail_body = self.generate_mail_body(detected_ip)
+
         message = EmailMessage()
-        message.set_content(body)
+        message.set_content(mail_body)
         message['Subject'] = "[DynDNS-Cloudflare] Failed to update IP for DNS"
         message['From'] = self.smtp_username
         message['To'] = self.notification_email
