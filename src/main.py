@@ -9,10 +9,10 @@ from graceful_shutdown import GracefulKiller
 from mail import MailClient
 from public_ip import PublicIPHandler
 
+load_dotenv()
 logger = get_logger(__name__)
 
 if __name__ == '__main__':
-    load_dotenv()
     dns_handler = HandlerDNS()
     killer = GracefulKiller()
     ip_client = PublicIPHandler()

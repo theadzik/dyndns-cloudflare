@@ -37,19 +37,23 @@ class HandlerDNS:
 
     def get_zone_id(self) -> str:
         url = f"{self.BASE_URL}/zones"
+        logger.debug("Getting Zone ID.")
         response = requests.get(url, headers=self.get_headers())
         zone_id = [zone["id"] for zone in response.json()["result"] if zone["name"] == self.HOSTNAME][0]
         return zone_id
 
     def get_record(self) -> dict:
+        logger.debug("Getting Record.")
         url = f"{self.BASE_URL}/zones/{self.zone_id}/dns_records"
         response = requests.get(url, headers=self.get_headers())
         return [record for record in response.json()["result"] if record["name"] == self.HOSTNAME][0]
 
     def get_record_id(self) -> str:
+        logger.debug("Getting Record ID.")
         return self.record["id"]
 
     def get_target_ip(self) -> str:
+        logger.debug("Getting target IP.")
         return self.record["content"]
 
     def update_record(self, ip_address: str) -> bool:
@@ -61,6 +65,7 @@ class HandlerDNS:
             "type": "A"
         }
 
+        logger.debug("Updating record.")
         response = requests.patch(
             url=update_url,
             json=data,
