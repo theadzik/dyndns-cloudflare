@@ -1,10 +1,11 @@
-import logging
 import os
 import platform
-import re
-import signal
 
 import requests
+
+from custom_logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class HandlerDNS:
@@ -30,15 +31,15 @@ class HandlerDNS:
         return headers
 
     def get_zone_id(self) -> str:
-        url = f"{self.BASE_URL}/v4/zones"
+        url = f"{self.BASE_URL}/zones"
         response = requests.get(url, headers=self.get_headers())
-        zone_id = [zone["id"] for zone in response.json()["result"] if zone.name == self.HOSTNAME][0]
+        zone_id = [zone["id"] for zone in response.json()["result"] if zone["name"] == self.HOSTNAME][0]
         return zone_id
 
     def get_dns_record_id(self) -> str:
-        url = f"{self.BASE_URL}/v4/zones/{self.zone_id}/dns_records"
+        url = f"{self.BASE_URL}/zones/{self.zone_id}/dns_records"
         response = requests.get(url, headers=self.get_headers())
-        record_id = [record["id"] for record in response.json()["result"] if record.name == self.HOSTNAME][0]
+        record_id = [record["id"] for record in response.json()["result"] if record["name"] == self.HOSTNAME][0]
         return record_id
 
     def update_dns_entry(self, ip_address: str) -> bool:
@@ -46,14 +47,13 @@ class HandlerDNS:
 
         data = {
             "name": f"{self.HOSTNAME}",
-            "ttl": 60,
             "content": f"{ip_address}",
             "type": "A"
         }
 
         response = requests.patch(
             url=update_url,
-            data=data,
+            json=data,
             headers=self.get_headers(),
         )
 
@@ -62,18 +62,17 @@ class HandlerDNS:
 
     @staticmethod
     def handle_response(response: requests.Response) -> bool:
-        if re.match(r"good.*", response.text):
-            logging.info(f"Updated DNS. [{response.status_code}] {response.text}")
+        try:
+            response.raise_for_status()
+            logger.info("Updated DNS record.")
             return True
-        elif re.match(r"nochg.*", response.text):
-            logging.warning(f"No changes. [{response.status_code}] {response.text}")
-            return True
-        elif re.match(r"nohost|badauth|badagent|!donator|abuse", response.text):
-            logging.critical(f"Failed to update DNS: [{response.status_code}] {response.text}")
-            logging.warning("Waiting indefinitely.")
-            signal.pause()
-        elif re.match(r"911", response.text):
-            logging.warning(f"Failed to update DNS: [{response.status_code}] {response.text}")
-        else:
-            logging.error(f"Did not understand response: [{response.status_code}] {response.text}")
-        return False
+        except requests.HTTPError as e:
+            response_body = response.json()
+            logger.error(
+                "Failed to update DNS record:\n"
+                f"  Status code: {response.status_code}\n"
+                f"  Errors: {response_body['errors']}"
+                f"  Messages: {response_body['messages']}"
+            )
+            logger.exception(e)
+            raise e
