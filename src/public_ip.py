@@ -1,4 +1,5 @@
 import os
+import random
 import socket
 import time
 
@@ -18,6 +19,8 @@ def get_public_ip() -> str:
         "https://ipecho.net/plain",
         "http://ip1.dynupdate.no-ip.com",
     ]
+    random.shuffle(remote_ip_detection_hosts)
+
     for idx, ip_url in enumerate(remote_ip_detection_hosts):
         logger.debug(f"Requesting IP from {ip_url}")
         try:
@@ -50,11 +53,11 @@ def get_public_ip() -> str:
         raise Exception(f"Failed to get public IP after {len(remote_ip_detection_hosts)} retries.")
 
 
-def save_public_ip(public_ip: str) -> None:
+def save_public_ip(ip_address: str) -> None:
     log_path = os.getenv("LOG_PATH", "/history/public_ip_history")
     with open(log_path, "a") as ip_log:
-        ip_log.write(public_ip + "\n")
-    logger.info(f"Saved {public_ip} IP to the history file")
+        ip_log.write(ip_address + "\n")
+    logger.info(f"Saved {ip_address} IP to the history file")
 
 
 def get_previous_public_ip() -> str:
@@ -65,11 +68,11 @@ def get_previous_public_ip() -> str:
             logger.debug(f"Previous IP: {previous_ip}")
             return previous_ip
     except FileNotFoundError:
-        logger.warning("No previous IP found")
+        logger.info("No previous IP found.")
         return ""
 
 
 def resolve_dns(hostname: str) -> str:
     resolved_ip = socket.gethostbyname(hostname)
-    logger.debug(f"{hostname} resolved to {resolved_ip}")
+    logger.debug(f"{hostname} resolved to {resolved_ip}.")
     return resolved_ip

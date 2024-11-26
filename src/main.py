@@ -7,6 +7,7 @@ import public_ip
 from custom_logger import get_logger
 from dns import HandlerDNS
 from graceful_shutdown import GracefulKiller
+from mail import MailClient
 
 logger = get_logger(__name__)
 
@@ -26,26 +27,28 @@ if __name__ == '__main__':
 
         if current_ip == previous_ip == target_ip:
             logger.debug("Nothing to update")
-            time.sleep(300)
+            time.sleep(60)
             continue
         elif current_ip == target_ip != previous_ip:
-            logger.warning(
-                "DNS resolves correctly but doesn't match saved Public IP."
+            logger.info(
+                "DNS Record is set correctly. Saving public IP."
             )
-            public_ip.save_public_ip(public_ip=current_ip)
-            time.sleep(300)
+            public_ip.save_public_ip(ip_address=current_ip)
+            time.sleep(60)
             continue
 
         if not check_only_mode:
-            update_success = dns_handler.update_record(current_ip)
+            update_success = dns_handler.update_record_with_retry(ip_address=current_ip)
         else:
             logger.info("CHECK_ONLY_MODE: Skipping update")
             update_success = True
 
         if update_success:
-            public_ip.save_public_ip(public_ip=current_ip)
+            public_ip.save_public_ip(ip_address=current_ip)
             time.sleep(600)
         else:
+            mail_client = MailClient()
+            mail_client.send_error_mail(current_ip)
             logger.warning("Something bad happened. Waiting 30 minutes")
             time.sleep(1800)
 

@@ -1,5 +1,6 @@
 import os
 import platform
+import time
 
 import requests
 
@@ -10,6 +11,7 @@ logger = get_logger(__name__)
 
 class HandlerDNS:
     BASE_URL = "https://api.cloudflare.com/client/v4"
+    MAX_BACKOFF_TIME = 300
 
     def __init__(self):
         self.APP_VERSION = os.environ['APP_VERSION']
@@ -69,6 +71,18 @@ class HandlerDNS:
 
         result = self.handle_response(response)
         return result
+
+    def update_record_with_retry(self, ip_address: str, retry_count: int = 3):
+        for idx in range(retry_count):
+            if self.update_record(ip_address=ip_address):
+                return True
+            else:
+                sleep_time = min(self.MAX_BACKOFF_TIME, 10 ** (idx + 1))  # 10, 100, 300, 300...
+                logger.debug(
+                    f"Waiting for {sleep_time} seconds."
+                )
+                time.sleep(sleep_time)
+        return False
 
     @staticmethod
     def handle_response(response: requests.Response) -> bool:
