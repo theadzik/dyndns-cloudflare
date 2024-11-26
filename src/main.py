@@ -3,11 +3,11 @@ import time
 
 from dotenv import load_dotenv
 
-import public_ip
 from custom_logger import get_logger
 from dns import HandlerDNS
 from graceful_shutdown import GracefulKiller
 from mail import MailClient
+from public_ip import PublicIPHandler
 
 logger = get_logger(__name__)
 
@@ -15,14 +15,15 @@ if __name__ == '__main__':
     load_dotenv()
     dns_handler = HandlerDNS()
     killer = GracefulKiller()
+    ip_client = PublicIPHandler()
 
     logger.info("Starting listening to Public IP changes")
     if check_only_mode := "CHECK_ONLY_MODE" in os.environ:
         logger.info("CHECK_ONLY_MODE is enabled")
 
     while not killer.kill_now:
-        current_ip = public_ip.get_public_ip()
-        previous_ip = public_ip.get_previous_public_ip()
+        current_ip = ip_client.get_public_ip()
+        previous_ip = ip_client.get_previous_public_ip()
         target_ip = dns_handler.get_target_ip()
 
         if current_ip == previous_ip == target_ip:
@@ -33,7 +34,7 @@ if __name__ == '__main__':
             logger.info(
                 "DNS Record is set correctly. Saving public IP."
             )
-            public_ip.save_public_ip(ip_address=current_ip)
+            ip_client.save_public_ip(ip_address=current_ip)
             time.sleep(60)
             continue
 
@@ -44,7 +45,7 @@ if __name__ == '__main__':
             update_success = True
 
         if update_success:
-            public_ip.save_public_ip(ip_address=current_ip)
+            ip_client.save_public_ip(ip_address=current_ip)
             time.sleep(600)
         else:
             mail_client = MailClient()
