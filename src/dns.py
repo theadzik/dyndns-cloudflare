@@ -1,94 +1,104 @@
-import logging
 import os
 import platform
-import re
-import signal
-import smtplib
-from base64 import b64encode
-from email.message import EmailMessage
+import time
 
 import requests
 
+from custom_logger import get_logger
+
+logger = get_logger(__name__)
+
 
 class HandlerDNS:
-    def __init__(self, public_ip: str):
-        self.username = os.environ["NOIP_USERNAME"]
-        self.password = os.environ["NOIP_PASSWORD"]
-        self.hostname = os.environ["HOSTNAME"]
-        self.public_ip = public_ip
-        self.update_url = (
-            "https://dynupdate.no-ip.com/nic/update"
-            f"?hostname={self.hostname}"
-            f"&myip={self.public_ip}"
-        )
-        self.smtp_username = os.getenv("SMTP_USERNAME", "")
-        self.smtp_password = os.getenv("SMTP_PASSWORD", "")
-        self.smtp_host = os.getenv("SMTP_HOST", "")
-        self.smtp_port = int(os.getenv("SMTP_PORT", 465))
-        self.notification_email = os.getenv("NOTIFICATION_EMAIL", "")
+    BASE_URL = "https://api.cloudflare.com/client/v4"
+    MAX_BACKOFF_TIME = 300
 
-        self.emails_enabled = all([
-            self.smtp_username,
-            self.smtp_password,
-            self.smtp_host,
-            self.smtp_port,
-            self.notification_email
-        ])
+    def __init__(self):
+        self.APP_VERSION = os.environ['APP_VERSION']
+        self.HOSTNAME = os.environ["HOSTNAME"]
+        self.API_TOKEN = os.environ["API_TOKEN"]
+
+        self.zone_id = self.get_zone_id()
+        self.record = self.get_record()
+
+        self.record_id = self.get_record_id()
+        self.target_ip = self.get_target_ip()
 
     def get_headers(self) -> dict:
-        # encode -> encode -> decode to get string -> bytes -> base64 bytes -> base64 string
-        basic_auth = b64encode(f"{self.username}:{self.password}".encode()).decode()
         headers = {
-            "Authorization": f"Basic {basic_auth}",
-            "User-Agent": f"theadzik/dyndns-noip"
+            "User-Agent": f"theadzik/dyndns-cloudflare"
                           f"{platform.system()}{platform.release()}"
-                          f"-{os.environ['APP_VERSION']}"
-                          f" adam@zmuda.pro"
+                          f"-{self.APP_VERSION}"
+                          f" adam@zmuda.pro",
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {self.API_TOKEN}"
         }
         return headers
 
-    def update_dns_entry(self) -> bool:
-        update = requests.request(
-            method="GET",
-            url=self.update_url,
-            headers=self.get_headers()
+    def get_zone_id(self) -> str:
+        url = f"{self.BASE_URL}/zones"
+        response = requests.get(url, headers=self.get_headers())
+        zone_id = [zone["id"] for zone in response.json()["result"] if zone["name"] == self.HOSTNAME][0]
+        return zone_id
+
+    def get_record(self) -> dict:
+        url = f"{self.BASE_URL}/zones/{self.zone_id}/dns_records"
+        response = requests.get(url, headers=self.get_headers())
+        return [record for record in response.json()["result"] if record["name"] == self.HOSTNAME][0]
+
+    def get_record_id(self) -> str:
+        return self.record["id"]
+
+    def get_target_ip(self) -> str:
+        return self.record["content"]
+
+    def update_record(self, ip_address: str) -> bool:
+        update_url = f"{self.BASE_URL}/zones/{self.zone_id}/dns_records/{self.record_id}"
+
+        data = {
+            "name": f"{self.HOSTNAME}",
+            "content": f"{ip_address}",
+            "type": "A"
+        }
+
+        response = requests.patch(
+            url=update_url,
+            json=data,
+            headers=self.get_headers(),
         )
 
-        result = self.handle_response(update)
+        self.record = response.json()["result"]
+
+        result = self.handle_response(response)
         return result
 
-    def handle_response(self, response: requests.Response) -> bool:
-        # https://www.noip.com/integrate/response
-        if re.match(r"good.*", response.text):
-            logging.info(f"Updated DNS. [{response.status_code}] {response.text}")
-            return True
-        elif re.match(r"nochg.*", response.text):
-            logging.warning(f"No changes. [{response.status_code}] {response.text}")
-            return True
-        elif re.match(r"nohost|badauth|badagent|!donator|abuse", response.text):
-            logging.critical(f"Failed to update DNS: [{response.status_code}] {response.text}")
-            if self.emails_enabled:
-                self.send_error_email(status_code=response.status_code, response_text=response.text)
-            logging.warning("Waiting indefinitely.")
-            signal.pause()
-        elif re.match(r"911", response.text):
-            logging.warning(f"Failed to update DNS: [{response.status_code}] {response.text}")
-        else:
-            logging.error(f"Did not understand response: [{response.status_code}] {response.text}")
+    def update_record_with_retry(self, ip_address: str, retry_count: int = 3):
+        for idx in range(retry_count):
+            if self.update_record(ip_address=ip_address):
+                return True
+            else:
+                sleep_time = min(self.MAX_BACKOFF_TIME, 10 ** (idx + 1))  # 10, 100, 300, 300...
+                logger.debug(
+                    f"Waiting for {sleep_time} seconds."
+                )
+                time.sleep(sleep_time)
         return False
 
-    def send_error_email(self, status_code: int, response_text: str):
-        message = EmailMessage()
-        message.set_content(
-            f"We failed to update your DNS entries.\n"
-            f"Public IP: {self.public_ip}\n"
-            f"Response: [{status_code}] {response_text}"
-        )
-        message['Subject'] = f"[DDNS] Failed to update IP ({response_text})"
-        message['From'] = self.smtp_username
-        message['To'] = self.notification_email
-
-        mailer = smtplib.SMTP_SSL(host=self.smtp_host, port=self.smtp_port)
-        mailer.login(user=self.smtp_username, password=self.smtp_password)
-        mailer.send_message(msg=message)
-        logging.info(f"Sent an email to {message['To']}")
+    @staticmethod
+    def handle_response(response: requests.Response) -> bool:
+        response_body = response.json()
+        try:
+            response.raise_for_status()
+            logger.info("Updated DNS record.")
+            if response_body["messages"]:
+                logger.info(f"  Messages: {response_body['messages']}")
+            return True
+        except requests.HTTPError as e:
+            logger.error(
+                "Failed to update DNS record:\n"
+                f"  Status code: {response.status_code}\n"
+                f"  Errors: {response_body['errors']}"
+                f"  Messages: {response_body['messages']}"
+            )
+            logger.exception(e)
+            return False

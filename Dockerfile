@@ -16,4 +16,4 @@ USER nonroot:nonroot
 ARG APP_VERSION
 ENV APP_VERSION=$APP_VERSION
 
-ENTRYPOINT ["python", "/src/update.py"]
+ENTRYPOINT ["python", "/src/main.py"]
