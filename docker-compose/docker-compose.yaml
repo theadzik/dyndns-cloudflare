@@ -5,10 +5,9 @@ services:
     volumes:
       - history:/history
     environment:
-      LOG_LEVEL: INFO
-      NOIP_USERNAME: username
-      NOIP_PASSWORD: password
-      HOSTNAME: example.ddns.net
+      API_TOKEN: "123abc"
+      HOSTNAME: example.com
+#      LOG_LEVEL: "INFO" # DEBUG | INFO | WARN Optional
 #      CHECK_ONLY_MODE: "True" ## Setting any value will cause check only mode to enable
 #      SMTP_HOST: mail.example.com # Optional
 #      SMTP_PORT: "465" # Optional
