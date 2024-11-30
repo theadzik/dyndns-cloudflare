@@ -23,17 +23,18 @@ DynDNS-Cloudflare is a simple dynamic dns client working with [cloudflare.com](h
 Depending on your environment provide environment variables either in
 [docker-compose](docker-compose/docker-compose.yaml) or in [kubernetes](kubernetes-manifest/secret.yaml)
 
-| Name               | Description                                       | Required |
-|--------------------|---------------------------------------------------|----------|
-| API_TOKEN          | Your Cloudflare API Token                         | Required |
-| HOSTNAME           | Domain you would like to update, e.g. example.com | Required |
-| LOG_LEVEL          | DEBUG, INFO or WARN                               | Optional |
-| CHECK_ONLY_MODE    | Setting any value will disable updating DDNS      | Optional |
-| SMTP_HOST          | SMTP server used to send warning emails           | Optional |
-| SMTP_PORT          | SMTP port, defaults to 465                        | Optional |
-| SMTP_USERNAME      | e.g. noreply@example.com                          | Optional |
-| SMTP_PASSWORD      | Password to SMTP server                           | Optional |
-| NOTIFICATION_EMAIL | Address to receive warning emails                 | Optional |
+| Name                    | Description                                       | Required |
+|-------------------------|---------------------------------------------------|----------|
+| API_TOKEN               | Your Cloudflare API Token                         | Required |
+| HOSTNAME                | Domain you would like to update, e.g. example.com | Required |
+| LOG_LEVEL               | DEBUG, INFO or WARN                               | Optional |
+| CHECK_ONLY_MODE         | Setting any value will disable updating DDNS      | Optional |
+| SMTP_HOST               | SMTP server used to send warning emails           | Optional |
+| SMTP_PORT               | SMTP port, defaults to 465                        | Optional |
+| SMTP_USERNAME           | e.g. noreply@example.com                          | Optional |
+| SMTP_PASSWORD           | Password to SMTP server                           | Optional |
+| NOTIFICATION_EMAIL      | Address to receive warning emails                 | Optional |
+| NOTIFICATION_ON_SUCCESS | Also send emails on successful DNS update         | Optional |
 
 ### Start DynDNS-Cloudflare
 
