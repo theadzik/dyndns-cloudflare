@@ -14,5 +14,6 @@ services:
 #      SMTP_USERNAME: noreply@example.com # Optional
 #      SMTP_PASSWORD: "password" # Optional
 #      NOTIFICATION_EMAIL: youremail@example.com # Optional
+#      NOTIFICATION_ON_SUCCESS: True # Optional
 volumes:
   history:
